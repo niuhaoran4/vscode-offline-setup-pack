@@ -1,0 +1,28 @@
+{
+  "C++ main": {
+    "prefix": ["cppmain", "main"],
+    "body": [
+      "#include <iostream>",
+      "",
+      "int main() {",
+      "    std::cout << \"Hello, World!\" << std::endl;",
+      "    return 0;",
+      "}",
+      ""
+    ],
+    "description": "C++ 主函数"
+  },
+  "C main": {
+    "prefix": ["cmain"],
+    "body": [
+      "#include <stdio.h>",
+      "",
+      "int main(void) {",
+      "    printf(\"Hello, World!\\n\");",
+      "    return 0;",
+      "}",
+      ""
+    ],
+    "description": "C 主函数"
+  }
+}

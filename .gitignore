@@ -1,0 +1,15 @@
+# Large downloaded binaries and build output are not stored in Git.
+# Recreate them with scripts/fetch-assets.ps1, or use the Release ZIP.
+
+installer/*.exe
+tools/*.7z
+tools/*.zip
+tools/*.exe
+extensions/*.vsix
+
+dist/
+dist.zip
+logs/
+*.log
+*.part
+_resolve-*/
