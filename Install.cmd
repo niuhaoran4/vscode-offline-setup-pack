@@ -34,8 +34,45 @@ if not exist "%~dp0scripts\setup.ps1" (
     goto failed
 )
 if not exist "%~dp0installer\VSCodeSetup-x64-*.exe" (
-    echo [ERROR] This is the source archive, not the full offline package.
-    echo Download VSCode-Offline-Setup-Pack-1.0.0-win32-x64.zip from the Releases page:
+    echo.
+    echo This is the source archive, not the full offline package.
+    echo The full package is about 512 MB and will be downloaded from GitHub Releases.
+    echo.
+    choice /C YN /T 15 /D Y /M "Download the full package now"
+    if errorlevel 2 goto source_declined
+    if not exist "%~dp0scripts\bootstrap.ps1" (
+        echo [ERROR] scripts\bootstrap.ps1 not found.
+        set "RC=1"
+        goto failed
+    )
+    echo Downloading...
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\bootstrap.ps1" -Destination "%~dp0_full-package"
+    if errorlevel 1 (
+        echo [ERROR] Download or extraction failed.
+        echo Download VSCode-Offline-Setup-Pack-1.0.0-win32-x64.zip manually from:
+        echo https://github.com/niuhaoran4/vscode-offline-setup-pack/releases
+        set "RC=1"
+        goto failed
+    )
+    set "BOOTSTRAP_ROOT="
+    for /d %%D in ("%~dp0_full-package\VSCode-Offline-Setup-Pack-*") do (
+        if exist "%%D\scripts\setup.ps1" set "BOOTSTRAP_ROOT=%%D"
+    )
+    if not defined BOOTSTRAP_ROOT (
+        echo [ERROR] Extracted package not found.
+        set "RC=1"
+        goto failed
+    )
+    set "NO_PAUSE_ARG="
+    if defined NOPAUSE set "NO_PAUSE_ARG=-NoPause"
+    call "%BOOTSTRAP_ROOT%\Install.cmd" %MODE% %DRYRUN% %NO_PAUSE_ARG%
+    exit /b %ERRORLEVEL%
+)
+
+:source_declined
+if not exist "%~dp0installer\VSCodeSetup-x64-*.exe" (
+    echo.
+    echo Download cancelled. Get the full package from:
     echo https://github.com/niuhaoran4/vscode-offline-setup-pack/releases
     set "RC=1"
     goto failed

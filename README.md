@@ -4,15 +4,22 @@
 平台：Windows 10 1809+ / Windows 11，x64  
 形态：VSCode 系统级安装版 + Python 系统级安装 + MinGW-w64 + 离线扩展
 
+[**⬇ 下载完整离线安装包（Windows x64，约 512 MB）**](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases/latest)
+
 这个包把一台干净的 Windows 电脑配置成可以直接写 C/C++ 和 Python 的环境：VSCode、Python、MinGW 都安装到系统级路径并写入系统 PATH；VSCode 配置和扩展按当前 Windows 用户注入；整个过程不依赖 Marketplace 和互联网（资产准备阶段除外）。
 
-> **GitHub 仓库说明**：本仓库只保存脚本、配置、文档和示例，不包含 `installer/`、`tools/` 中的安装包、`extensions/*.vsix`、`dist/` 和 `logs/`。运行 `scripts\fetch-assets.ps1` 可重新准备资产，或从 Releases 下载完整离线 ZIP。
+> **GitHub 仓库说明**：仓库只保存脚本、配置、文档和示例，不包含 `installer/`、`tools/` 中的安装包、`extensions/*.vsix`、`dist/` 和 `logs/`。  
+> - 想直接使用：从上面的 **Releases** 下载完整 ZIP（公开仓库，无需登录）。  
+> - 如果下载的是源码 ZIP：双击 `Install.cmd`，它会自动从 Releases 下载完整包（约 512 MB，需要联网），解压后继续安装。  
+> - 源码仓库不把 500 MB 二进制塞进 Git 历史，这是 GitHub 的常规做法。
+
+> **第三方组件提示**：Release 内含 Microsoft Marketplace 扩展（包括 Pylance、C/C++），公开再分发前请确认各自许可；详见 `NOTICE.md`。
 
 ---
 
 ## 第一次使用：只要三步
 
-> **不要下载源码 ZIP，也不要克隆仓库。** 源码里没有 VSCode、Python、MinGW 安装包和扩展，直接运行会失败。
+> **推荐直接下载 Release 完整包。** 如果误下载了源码 ZIP，也可以双击 `Install.cmd`，它会自动下载完整包（约 512 MB，需要联网）。
 
 1. 打开 [Releases](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases)，下载  
    `VSCode-Offline-Setup-Pack-1.0.0-win32-x64.zip`。
@@ -24,6 +31,8 @@
 
    不要在压缩包里直接双击运行。
 3. 双击 **`Install.cmd`**，UAC 弹窗点“是”，然后等它自动装完。
+
+如果双击的是源码包里的 `Install.cmd`，它会提示是否下载完整包；按 `Y` 或等 15 秒，它会自动下载、解压并继续安装。
 
 默认装到 C 盘，界面是简体中文，安装过程不需要联网。**第一次使用建议就选 C 盘，最省事；只有 C 盘空间紧张时再考虑 D 盘。**
 
@@ -41,8 +50,9 @@ examples\hello-cpp
 
 - 双击后提示“Windows 已保护你的电脑”：点“更多信息”→“仍要运行”。
 - 双击没反应：在 PowerShell 里执行 `.\Install.cmd`。
-- 看到 `scripts\setup.ps1 not found`：说明你是在 ZIP 压缩包里直接运行，或者下载的是源码包。请右键 ZIP →“全部解压”，并确认下载的是 **Releases** 里的完整 ZIP，不是 GitHub 页面的“Code → Download ZIP”。
-- `Install-D.cmd` 双击没反应：原因同上，先完整解压，再在解压后的文件夹里双击。
+- 看到 `scripts\setup.ps1 not found`：说明你是在 ZIP 压缩包里直接运行。请先完整解压，再运行 `Install.cmd`。
+- 下载的是源码 ZIP：直接双击 `Install.cmd`，按提示下载完整包；或从 Releases 手动下载完整 ZIP。
+- `Install-D.cmd` 双击没反应：先完整解压；如果仍然没反应，在 PowerShell 里执行 `.\Install-D.cmd` 查看错误。
 - 直接双击即可，脚本会自己请求 UAC；不要右键“以管理员身份运行”再用另一个管理员账户提权，否则当前用户的配置会延迟到下次登录。
 - 杀毒软件拦截时，先把解压目录加入临时白名单。
 
