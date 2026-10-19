@@ -49,7 +49,7 @@ if not exist "%~dp0installer\VSCodeSetup-x64-*.exe" (
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\bootstrap.ps1" -Destination "%~dp0_full-package"
     if errorlevel 1 (
         echo [ERROR] Download or extraction failed.
-        echo Download VSCode-Offline-Setup-Pack-1.0.0-win32-x64.zip manually from:
+        echo Download the full package manually from:
         echo https://github.com/niuhaoran4/vscode-offline-setup-pack/releases
         set "RC=1"
         goto failed

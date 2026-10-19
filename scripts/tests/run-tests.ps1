@@ -416,6 +416,32 @@ try {
         Assert-True ((Read-TextFile -Path $mainLauncher) -match 'setup\.ps1') 'Install.cmd 应调用 setup.ps1'
         Assert-True ((Read-TextFile -Path $dLauncher) -match 'Install\.cmd') 'Install-D.cmd 应调用 Install.cmd'
     }
+
+    Test-Case 'PATH 合并与移除兼容畸形项' {
+        $malformed = 'cscript //nologo "D:\pyenv-win\pyenv-win\bin\..\libexec\pyenv.vbs"\shims;cscript //nologo "D:\pyenv-win\pyenv-win\bin\..\libexec\pyenv.vbs"\bin;C:\Windows'
+        $merged = Merge-PathList -CurrentValue $malformed -NewEntry 'C:\mingw64\bin'
+        Assert-True $merged.Changed '应追加新路径'
+        Assert-True ($merged.Value -like '*C:\mingw64\bin*') '应包含新路径'
+        Assert-True ($merged.Value -like '*pyenv.vbs*') '畸形项应原样保留'
+
+        $removed = Remove-PathEntryFromList -CurrentValue $merged.Value -Entry 'C:\mingw64\bin'
+        Assert-True $removed.Changed '应移除新路径'
+        Assert-True (-not (Test-PathEntryPresent -Value $removed.Value -Entry 'C:\mingw64\bin')) '移除后不应存在'
+        Assert-True ($removed.Value -like '*pyenv.vbs*') '畸形项仍应保留'
+        $null = ConvertTo-PathEntryNormalized -Entry $malformed
+    }
+
+    Test-Case 'hello-cpp 使用 g++ 编译并匹配 launch 任务' {
+        $tasks = ConvertFrom-Json -InputObject (Read-TextFile -Path (Join-Path $packRoot 'examples\hello-cpp\.vscode\tasks.json'))
+        $launch = ConvertFrom-Json -InputObject (Read-TextFile -Path (Join-Path $packRoot 'examples\hello-cpp\.vscode\launch.json'))
+        $task = @($tasks.tasks)[0]
+        Assert-True ($task.command -match 'g\+\+\.exe$') 'tasks.json 应使用 g++.exe'
+        Assert-True ($task.label -match 'g\+\+\.exe') '任务标签应显示 g++'
+        Assert-True (@($task.args) -contains '-static') 'C++ 示例应静态链接运行库'
+        Assert-Equal $task.label $launch.configurations[0].preLaunchTask 'preLaunchTask 应匹配任务标签'
+        $pathEntry = @($launch.configurations[0].environment | Where-Object { $_.name -eq 'PATH' }) | Select-Object -First 1
+        Assert-True ($pathEntry -and $pathEntry.value -like 'C:\mingw64\bin;*') 'launch 应优先使用包内 MinGW bin'
+    }
 }
 finally {
     if (Test-Path -LiteralPath $tempRoot) {

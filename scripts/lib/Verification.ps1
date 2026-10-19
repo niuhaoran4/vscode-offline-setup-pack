@@ -50,6 +50,7 @@ function Invoke-SmokeTest {
         [Parameter(Mandatory)]$Context,
         [Parameter(Mandatory)]$Logger,
         [Parameter(Mandatory)][string]$GccPath,
+        [Parameter(Mandatory)][string]$GxxPath,
         [Parameter(Mandatory)][string]$GdbPath
     )
 
@@ -61,8 +62,8 @@ function Invoke-SmokeTest {
         $code = '#include <stdio.h>' + [Environment]::NewLine + 'int main(void) { printf("PACK_SMOKE_OK\n"); return 0; }' + [Environment]::NewLine
         Write-Utf8NoBom -Path $source -Content $code
 
-        $childEnvironment = @{ 'PATH' = (Get-EffectivePath -Expand) }
-        $compile = Invoke-CapturedProcess -FilePath $GccPath -ArgumentList @('-g', $source, '-o', $exe) -TimeoutSeconds 120 -WorkingDirectory $temp -Environment $childEnvironment
+        $childEnvironment = @{ 'PATH' = ((Split-Path -Parent $GccPath) + ';' + (Get-EffectivePath -Expand)) }
+        $compile = Invoke-CapturedProcess -FilePath $GccPath -ArgumentList @('-static', '-g', $source, '-o', $exe) -TimeoutSeconds 120 -WorkingDirectory $temp -Environment $childEnvironment
         if ($compile.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $exe)) {
             return [pscustomobject]@{ Ok = $false; Stage = 'compile'; Detail = ('gcc 编译失败: ' + $compile.Output) }
         }
@@ -77,7 +78,22 @@ function Invoke-SmokeTest {
             return [pscustomobject]@{ Ok = $false; Stage = 'gdb'; Detail = ('gdb 调试失败: ' + $gdb.Output) }
         }
 
-        return [pscustomobject]@{ Ok = $true; Stage = 'all'; Detail = 'gcc 编译、运行、gdb 批处理全部通过' }
+        $cppSource = Join-Path $temp 'hello.cpp'
+        $cppExe = Join-Path $temp 'hello_cpp.exe'
+        $cppCode = '#include <iostream>' + [Environment]::NewLine +
+            'int main() { std::cout << "PACK_CPP_OK" << std::endl; return 0; }' + [Environment]::NewLine
+        Write-Utf8NoBom -Path $cppSource -Content $cppCode
+        $cppCompile = Invoke-CapturedProcess -FilePath $GxxPath -ArgumentList @('-static', '-std=c++17', '-g', $cppSource, '-o', $cppExe) -TimeoutSeconds 120 -WorkingDirectory $temp -Environment $childEnvironment
+        if ($cppCompile.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $cppExe)) {
+            return [pscustomobject]@{ Ok = $false; Stage = 'cpp-compile'; Detail = ('g++ 编译失败: ' + $cppCompile.Output) }
+        }
+
+        $cppRun = Invoke-CapturedProcess -FilePath $cppExe -ArgumentList @() -TimeoutSeconds 30 -WorkingDirectory $temp -Environment $childEnvironment
+        if ($cppRun.ExitCode -ne 0 -or $cppRun.Output -notmatch 'PACK_CPP_OK') {
+            return [pscustomobject]@{ Ok = $false; Stage = 'cpp-run'; Detail = ('C++ 产物运行失败: ' + $cppRun.Output) }
+        }
+
+        return [pscustomobject]@{ Ok = $true; Stage = 'all'; Detail = 'gcc/g++ 编译、运行、gdb 批处理全部通过' }
     }
     catch {
         return [pscustomobject]@{ Ok = $false; Stage = 'exception'; Detail = $_.Exception.Message }
@@ -200,7 +216,7 @@ function Invoke-PackVerification {
         }
 
         if (-not $SkipSmokeTest -and $mingw.Exists -and $mingw.Missing.Count -eq 0) {
-            $smoke = Invoke-SmokeTest -Context $Context -Logger $Logger -GccPath (Join-Path $mingw.BinDir 'gcc.exe') -GdbPath (Join-Path $mingw.BinDir 'gdb.exe')
+            $smoke = Invoke-SmokeTest -Context $Context -Logger $Logger -GccPath (Join-Path $mingw.BinDir 'gcc.exe') -GxxPath (Join-Path $mingw.BinDir 'g++.exe') -GdbPath (Join-Path $mingw.BinDir 'gdb.exe')
             if ($smoke.Ok) {
                 Add-VerificationCheck -Checks $checks -Logger $Logger -Name '编译调试冒烟测试' -Status 'PASS' -Detail $smoke.Detail
             }

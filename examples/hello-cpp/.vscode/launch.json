@@ -2,14 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "C/C++: gcc.exe 生成并调试",
+      "name": "C/C++: g++.exe 生成并调试",
       "type": "cppdbg",
       "request": "launch",
       "program": "${fileDirname}/${fileBasenameNoExtension}.exe",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${fileDirname}",
-      "environment": [],
+      "environment": [
+        {
+          "name": "PATH",
+          "value": "C:\\mingw64\\bin;${env:PATH}"
+        }
+      ],
       "externalConsole": false,
       "MIMode": "gdb",
       "miDebuggerPath": "C:/mingw64/bin/gdb.exe",
@@ -20,7 +25,7 @@
           "ignoreFailures": true
         }
       ],
-      "preLaunchTask": "C/C++: gcc.exe 生成活动文件"
+      "preLaunchTask": "C/C++: g++.exe 生成活动文件"
     }
   ]
 }

@@ -494,9 +494,18 @@ function ConvertTo-PathEntryNormalized {
     $value = $Entry.Trim().Trim('"')
     try { $value = [Environment]::ExpandEnvironmentVariables($value) } catch { }
     $value = $value.TrimEnd('\')
-    if ([System.IO.Path]::IsPathRooted($value)) {
-        try { $value = [System.IO.Path]::GetFullPath($value).TrimEnd('\') } catch { }
+
+    # PATH can contain entries that are not valid paths at all (for example
+    # pyenv-win shims such as: cscript //nologo "...\pyenv.vbs"\shims).
+    # .NET Framework throws on IsPathRooted() for those entries; normalization
+    # must not break PATH merging. Keep the raw entry for comparison/preservation.
+    try {
+        if ([System.IO.Path]::IsPathRooted($value)) {
+            try { $value = [System.IO.Path]::GetFullPath($value).TrimEnd('\') } catch { }
+        }
     }
+    catch { }
+
     return $value.ToLowerInvariant()
 }
 
