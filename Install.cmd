@@ -18,8 +18,31 @@ shift
 goto parse
 
 :parsed
+set "IN_ZIP_TEMP="
+echo "%~dp0" | findstr /I /C:".zip" /C:"\AppData\Local\Temp\" >nul
+if not errorlevel 1 set "IN_ZIP_TEMP=1"
+
 if not exist "%~dp0scripts\setup.ps1" (
-    echo [ERROR] scripts\setup.ps1 not found. Extract the whole package first.
+    echo [ERROR] Cannot find scripts\setup.ps1.
+    if defined IN_ZIP_TEMP (
+        echo You are running this file from inside a ZIP archive or a temporary folder.
+        echo Right-click the downloaded ZIP, choose "Extract All", then run Install.cmd from the extracted folder.
+    ) else (
+        echo Extract the whole package first, then run Install.cmd from the extracted folder.
+    )
+    set "RC=1"
+    goto failed
+)
+if not exist "%~dp0installer\VSCodeSetup-x64-*.exe" (
+    echo [ERROR] This is the source archive, not the full offline package.
+    echo Download VSCode-Offline-Setup-Pack-1.0.0-win32-x64.zip from the Releases page:
+    echo https://github.com/niuhaoran4/vscode-offline-setup-pack/releases
+    set "RC=1"
+    goto failed
+)
+if not exist "%~dp0extensions\*.vsix" (
+    echo [ERROR] Extension files are missing. Download the full offline package from Releases.
+    echo https://github.com/niuhaoran4/vscode-offline-setup-pack/releases
     set "RC=1"
     goto failed
 )

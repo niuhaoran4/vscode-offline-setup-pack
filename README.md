@@ -41,6 +41,8 @@ examples\hello-cpp
 
 - 双击后提示“Windows 已保护你的电脑”：点“更多信息”→“仍要运行”。
 - 双击没反应：在 PowerShell 里执行 `.\Install.cmd`。
+- 看到 `scripts\setup.ps1 not found`：说明你是在 ZIP 压缩包里直接运行，或者下载的是源码包。请右键 ZIP →“全部解压”，并确认下载的是 **Releases** 里的完整 ZIP，不是 GitHub 页面的“Code → Download ZIP”。
+- `Install-D.cmd` 双击没反应：原因同上，先完整解压，再在解压后的文件夹里双击。
 - 直接双击即可，脚本会自己请求 UAC；不要右键“以管理员身份运行”再用另一个管理员账户提权，否则当前用户的配置会延迟到下次登录。
 - 杀毒软件拦截时，先把解压目录加入临时白名单。
 
