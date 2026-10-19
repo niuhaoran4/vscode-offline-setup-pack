@@ -1,6 +1,6 @@
 # VSCode 离线全自动安装配置包
 
-版本：1.0.2  
+版本：1.0.3  
 平台：Windows 10 1809+ / Windows 11，x64  
 形态：VSCode 系统级安装版 + Python 系统级安装 + MinGW-w64 + 离线扩展
 
@@ -22,7 +22,7 @@
 > **推荐直接下载 Release 完整包。** 如果误下载了源码 ZIP，也可以双击 `Install.cmd`，它会自动下载完整包（约 512 MB，需要联网）。
 
 1. 打开 [Releases](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases)，下载  
-   `VSCode-Offline-Setup-Pack-1.0.2-win32-x64.zip`。
+   `VSCode-Offline-Setup-Pack-1.0.3-win32-x64.zip`。
 2. 把 ZIP **完整解压**到一个短英文路径，例如：
 
    ```text
@@ -57,6 +57,7 @@ examples\hello-cpp
 - `hello-cpp` 链接失败（`undefined reference to std::...`）：旧版示例误用了 `gcc.exe`；1.0.1 起已改为 `g++.exe` 并默认 `-static`。请更新到最新版。
 - 出现 `IsPathRooted ... 路径中具有非法字符`：旧版在 PowerShell 5.1 下遇到 pyenv 畸形 PATH 项会崩溃；1.0.1 起已兼容，请更新。
 - 出现 `无法完成提权安装 ... PSCustomObject ... SwitchParameter`：旧版用 `Start-Process -Verb RunAs` 在部分机器上参数绑定失败；1.0.2 已改用 .NET `ProcessStartInfo` 启动提权进程。请更新到 1.0.2。
+- 安装后界面仍是英文：VSCode 必须**完全退出**（窗口、托盘/后台进程都结束）再打开，仅 Reload Window 不读取 `argv.json`。脚本会写入 `zh-cn`，带注释和尾逗号的 `argv.json` 也会先备份再更新。
 - 杀毒软件拦截时，先把解压目录加入临时白名单。
 
 ---
@@ -237,6 +238,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 `
 - 只重定向已知的 C/C++ 扩展缓存；其他第三方扩展自己的缓存可能仍在 `%LOCALAPPDATA%`，需要单独处理。
 - 卸载不会删除 `D:\VSCodeData` 本身。`-RemoveExtensions` 和 `-RestoreSettings` 会通过联接操作目标目录，执行前请确认。
 
+### 3.3.2 自动创建的 work 项目目录
+
+安装或运行 `inject-config.ps1` 时，会在当前用户桌面创建：
+
+```text
+%USERPROFILE%\Desktop\work\
+├── .vscode\
+│   └── tasks.json    # C: gcc.exe，C++: g++.exe（C++ 为默认构建）
+└── py\               # 放 Python 文件
+```
+
+- 桌面被 OneDrive 重定向时，路径跟随实际桌面位置；桌面不可用时回退到 `%USERPROFILE%\work`。
+- 如果 `tasks.json` 已存在，不会覆盖，避免破坏你自己的任务配置。
+- `work` 里的 C++ 任务使用 `g++.exe`；如果运行生成的 exe 报 DLL 入口点错误，可在 args 中加 `-static`，或确保 `C:\mingw64\bin` 在 PATH 前面。
+
 ### 3.4 验证
 
 **注销并重新登录**（或至少关闭所有终端和 VSCode）后，打开新的 PowerShell：
@@ -257,8 +273,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\vscode-offline-pack\scrip
 - `code` / `python` / `gcc` / `g++` / `gdb` 当前解析到哪个路径；
 - 系统 PATH 是否包含三个关键目录（VSCode bin、Python、MinGW bin）；
 - 用户 `settings.json` 的 Python 解释器和 C++ 编译器路径是否正确；
+- `argv.json` 的界面语言是否为 `zh-cn`；
+- 桌面 `work` 目录、`.vscode\tasks.json` 和 `py` 是否创建；
 - 扩展清单是否全部安装；
-- 实际编译、运行、gdb 批处理是否成功（冒烟测试）。
+- 实际编译、运行、gdb 批处理是否成功（冒烟测试，包含 C++）。
 
 ### 3.5 打开示例
 
@@ -319,7 +337,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\vscode-offline-pack\scrip
 2. 渲染并校验 JSON，确认没有残留 `{{...}}`；
 3. 以无 BOM UTF-8 写入；
 4. 复制 `keybindings.json` 和 snippets；
-5. 默认写入 `%APPDATA%\Code\argv.json` 的 `zh-cn` locale；`-Locale en` 可改英文（带注释的 `argv.json` 不会被破坏，脚本会提示手动切换）。
+5. 默认写入 `%APPDATA%\Code\argv.json` 的 `zh-cn` locale；带注释/尾逗号的 `argv.json` 会先备份再解析更新。完全退出 VSCode 后生效；`-Locale en` 可改英文。
 
 ### 扩展
 
@@ -431,7 +449,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\uninstall.ps1 -Sco
 - 更新 VSCode / Python / MinGW / 扩展：在联网机器上重新运行 `fetch-assets.ps1`（必要时加 `-Force`），生成新的 `MANIFEST.json`，再复制到目标机运行 `setup.ps1`。
 - 更新 winlibs：默认使用 `paths.psd1` 中锁定的 GCC 16.2.0 资产。要换新版本，使用 `-MinGWLatest` 或 `-MinGWAsset` 生成新 manifest，然后把 `paths.psd1` 的 `Pinned` 更新为新的名称/URL/SHA256，保证下次可复现。
 - 新增扩展：用 `-Extensions` 指定新的根扩展，准备阶段会重新解析闭包；或者手动把 `.vsix` 放入 `extensions\` 并更新 `MANIFEST.json`（不推荐手改）。
-- 中文界面：包内已包含简体中文语言包，默认写入 `zh-cn`。如果界面没有切换，重启 VSCode，或在命令面板运行“Configure Display Language”；需要英文时用 `-Locale en` 重新注入配置。
+- 中文界面：包内已包含简体中文语言包，默认写入 `zh-cn`。如果界面没有切换，**完全退出 VSCode 后重新打开**（不是仅 Reload Window），或运行 `inject-config.ps1` 重新写入；需要英文时用 `-Locale en` 重新注入配置。
 
 ---
 

@@ -459,6 +459,41 @@ try {
         Assert-Equal 0 $elevated.ExitCode '退出码'
         Assert-Equal 'Test' $elevated.Result.stages[0].Name '阶段名称'
     }
+
+    Test-Case 'JSONC 解析支持注释和尾逗号' {
+        $jsonc = @'
+{
+  // line comment
+  "url": "https://example.com/a//b",
+  /* block comment */
+  "count": 2,
+}
+'@
+        $obj = ConvertFrom-Json -InputObject (ConvertFrom-JsoncText -Text $jsonc)
+        Assert-Equal 'https://example.com/a//b' $obj.url '字符串中的 // 应保留'
+        Assert-Equal 2 $obj.count '尾逗号应被兼容'
+    }
+
+    Test-Case '工作目录包含 tasks.json 和 py 目录' {
+        $context = [pscustomobject]@{ ConfigDir = (Join-Path $packRoot 'config') }
+        $logger = New-PackLogger -LogDir (Join-Path $tempRoot 'work-logs') -Prefix 'work-test'
+        $workDir = Join-Path $tempRoot 'work-project'
+
+        $result = Initialize-WorkDirectory -Context $context -Logger $logger -WorkDir $workDir
+        Assert-True (Test-Path -LiteralPath (Join-Path $workDir '.vscode\tasks.json')) 'tasks.json 应存在'
+        Assert-True (Test-Path -LiteralPath (Join-Path $workDir 'py')) 'py 目录应存在'
+        Assert-Equal $workDir $result.WorkDir '返回工作目录'
+
+        $tasks = ConvertFrom-Json -InputObject (Read-TextFile -Path (Join-Path $workDir '.vscode\tasks.json'))
+        Assert-Equal 2 @($tasks.tasks).Count '应有两个构建任务'
+        Assert-True ((@($tasks.tasks)[1].command) -match 'g\+\+\.exe$') 'C++ 任务应使用 g++'
+        Assert-True ([bool](@($tasks.tasks)[1].group.isDefault)) 'C++ 任务应为默认构建'
+
+        $tasksPath = Join-Path $workDir '.vscode\tasks.json'
+        Write-Utf8NoBom -Path $tasksPath -Content '{"sentinel":true}'
+        Initialize-WorkDirectory -Context $context -Logger $logger -WorkDir $workDir | Out-Null
+        Assert-Equal '{"sentinel":true}' (Read-TextFile -Path $tasksPath) '重复执行不应覆盖已有 tasks.json'
+    }
 }
 finally {
     if (Test-Path -LiteralPath $tempRoot) {

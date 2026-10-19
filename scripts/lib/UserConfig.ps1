@@ -19,6 +19,115 @@ function Get-UserCodePaths {
     }
 }
 
+function Get-DefaultWorkDir {
+    $desktop = [Environment]::GetFolderPath('Desktop')
+    if (-not [string]::IsNullOrWhiteSpace($desktop)) {
+        return (Join-Path $desktop 'work')
+    }
+    return (Join-Path $env:USERPROFILE 'work')
+}
+
+function Initialize-WorkDirectory {
+    param(
+        [Parameter(Mandatory)]$Context,
+        [Parameter(Mandatory)]$Logger,
+        [string]$WorkDir = '',
+        [switch]$DryRun
+    )
+
+    if (-not $WorkDir) { $WorkDir = Get-DefaultWorkDir }
+    if (-not [System.IO.Path]::IsPathRooted($WorkDir)) {
+        throw ('工作目录必须是绝对路径: ' + $WorkDir)
+    }
+
+    $workPath = [System.IO.Path]::GetFullPath($WorkDir).TrimEnd('\')
+    $vscodeDir = Join-Path $workPath '.vscode'
+    $tasksPath = Join-Path $vscodeDir 'tasks.json'
+    $pythonDir = Join-Path $workPath 'py'
+    $templatePath = Join-Path $Context.ConfigDir 'work-tasks.json'
+    if (-not (Test-Path -LiteralPath $templatePath)) {
+        throw ('缺少工作目录模板: ' + $templatePath)
+    }
+
+    if ($DryRun) {
+        $Logger.Detail('DryRun: 将创建/检查工作目录: ' + $workPath)
+        return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Created = $false; Planned = $true }
+    }
+
+    New-Item -ItemType Directory -Path $vscodeDir, $pythonDir -Force | Out-Null
+    $created = $false
+    if (-not (Test-Path -LiteralPath $tasksPath)) {
+        Copy-Item -LiteralPath $templatePath -Destination $tasksPath -Force
+        $created = $true
+        $Logger.Ok('已创建工作目录任务: ' + $tasksPath)
+    }
+    else {
+        $Logger.Detail('工作目录任务已存在（跳过）: ' + $tasksPath)
+    }
+    $Logger.Info('工作目录: ' + $workPath)
+
+    return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Created = $created; Planned = $false }
+}
+
+function ConvertFrom-JsoncText {
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Text)
+
+    $Text = $Text.TrimStart([char]0xFEFF)
+    $builder = New-Object System.Text.StringBuilder
+    $inString = $false
+    $escaped = $false
+    $inLineComment = $false
+    $inBlockComment = $false
+
+    for ($i = 0; $i -lt $Text.Length; $i++) {
+        $c = $Text[$i]
+        $next = [char]0
+        if ($i + 1 -lt $Text.Length) { $next = $Text[$i + 1] }
+
+        if ($inLineComment) {
+            if ($c -eq "`r" -or $c -eq "`n") {
+                $inLineComment = $false
+                [void]$builder.Append($c)
+            }
+            continue
+        }
+        if ($inBlockComment) {
+            if ($c -eq '*' -and $next -eq '/') {
+                $inBlockComment = $false
+                $i++
+            }
+            continue
+        }
+        if ($inString) {
+            [void]$builder.Append($c)
+            if ($escaped) { $escaped = $false }
+            elseif ($c -eq [char]92) { $escaped = $true }
+            elseif ($c -eq '"') { $inString = $false }
+            continue
+        }
+        if ($c -eq '"') {
+            $inString = $true
+            [void]$builder.Append($c)
+            continue
+        }
+        if ($c -eq '/' -and $next -eq '/') {
+            $inLineComment = $true
+            $i++
+            continue
+        }
+        if ($c -eq '/' -and $next -eq '*') {
+            $inBlockComment = $true
+            $i++
+            continue
+        }
+        [void]$builder.Append($c)
+    }
+
+    $clean = $builder.ToString()
+    $clean = $clean -replace ',\s*([}\]])', '$1'
+    return $clean.Trim()
+}
+
 function Resolve-ConfigTemplate {
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string]$Template,
@@ -314,27 +423,31 @@ function Write-UserSettings {
     $Logger.Ok('已写入 settings.json、keybindings.json 和 ' + $snippetFiles.Count + ' 个代码片段')
 
     if ($Locale) {
+        $argvBackup = $null
         try {
             if (Test-Path -LiteralPath $paths.Argv) {
+                $argvBackup = $paths.Argv + '.backup.' + (Get-Date -Format 'yyyyMMdd-HHmmss')
+                Copy-Item -LiteralPath $paths.Argv -Destination $argvBackup -Force
                 $argvText = Read-TextFile -Path $paths.Argv
-                $argvJson = Test-JsonText -Text $argvText
-                if (-not $argvJson.Ok) {
-                    $Logger.Warn('argv.json 含注释或格式特殊，未自动修改 locale。请在 VSCode 中运行“Configure Display Language”。')
+                $argvObject = $null
+                try {
+                    $argvObject = ConvertFrom-Json -InputObject (ConvertFrom-JsoncText -Text $argvText)
                 }
-                else {
-                    $backup = $paths.Argv + '.backup.' + (Get-Date -Format 'yyyyMMdd-HHmmss')
-                    Copy-Item -LiteralPath $paths.Argv -Destination $backup -Force
-                    $argvObject = ConvertFrom-Json -InputObject $argvText
-                    $argvObject | Add-Member -NotePropertyName 'locale' -NotePropertyValue $Locale -Force
-                    Write-Utf8NoBom -Path $paths.Argv -Content ($argvObject | ConvertTo-Json -Depth 10)
-                    $Logger.Ok('已设置 VSCode 显示语言: ' + $Locale)
+                catch {
+                    $Logger.Warn('argv.json 无法解析，已备份并重建最小配置: ' + $argvBackup)
+                    $argvObject = $null
+                }
+                if ($null -eq $argvObject) {
+                    $argvObject = [pscustomobject]@{}
                 }
             }
             else {
-                $argvObject = [pscustomobject]@{ locale = $Locale }
-                Write-Utf8NoBom -Path $paths.Argv -Content ($argvObject | ConvertTo-Json -Depth 5)
-                $Logger.Ok('已创建 argv.json，显示语言: ' + $Locale)
+                $argvObject = [pscustomobject]@{}
             }
+
+            $argvObject | Add-Member -NotePropertyName 'locale' -NotePropertyValue $Locale -Force
+            Write-Utf8NoBom -Path $paths.Argv -Content ($argvObject | ConvertTo-Json -Depth 10)
+            $Logger.Ok('已设置 VSCode 显示语言: ' + $Locale + '（完全退出 VSCode 后重新打开生效）')
         }
         catch {
             $Logger.Warn('设置显示语言失败: ' + $_.Exception.Message)
@@ -371,6 +484,7 @@ function Invoke-UserConfiguration {
         Backup          = $null
         Settings        = $null
         Extensions      = $null
+        WorkDir         = $null
         UserPathChanged = $false
         Ok              = $true
     }
@@ -379,6 +493,9 @@ function Invoke-UserConfiguration {
     if ($running.Count -gt 0) {
         $Logger.Warn('检测到 VSCode 正在运行。配置会写入磁盘，但扩展安装后需要重启 VSCode 窗口才能生效。')
     }
+
+    $workResult = Initialize-WorkDirectory -Context $Context -Logger $Logger -DryRun:$DryRun
+    $result.WorkDir = $workResult.WorkDir
 
     if (-not $NoBackup -and -not $DryRun) {
         $result.Backup = Backup-UserCodeDirectory -UserDir $paths.UserDir -LogDir $Context.LogsDir -Logger $Logger

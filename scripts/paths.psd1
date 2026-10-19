@@ -1,7 +1,7 @@
 ﻿@{
     SchemaVersion    = 1
     PackName         = 'VSCode-Offline-Setup-Pack'
-    PackVersion      = '1.0.2'
+    PackVersion      = '1.0.3'
     Platform         = 'win32-x64'
     MinimumOSBuild   = 17763
     MinimumFreeSpaceGB = 5

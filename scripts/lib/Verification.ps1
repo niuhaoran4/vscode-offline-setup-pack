@@ -297,6 +297,47 @@ function Invoke-PackVerification {
             Add-VerificationCheck -Checks $checks -Logger $Logger -Name '用户 settings.json' -Status 'FAIL' -Detail ('不存在: ' + $userPaths.Settings)
         }
 
+        if (Test-Path -LiteralPath $userPaths.Argv) {
+            try {
+                $argvText = Read-TextFile -Path $userPaths.Argv
+                $argv = ConvertFrom-Json -InputObject (ConvertFrom-JsoncText -Text $argvText)
+                $locale = [string](Get-PropertyValue -Object $argv -Name 'locale' -Default '')
+                if ($locale -eq 'zh-cn') {
+                    Add-VerificationCheck -Checks $checks -Logger $Logger -Name 'VSCode 界面语言' -Status 'PASS' -Detail 'zh-cn'
+                }
+                else {
+                    Add-VerificationCheck -Checks $checks -Logger $Logger -Name 'VSCode 界面语言' -Status 'WARN' -Detail ('当前: ' + $locale + '；设为 zh-cn 后需完全退出 VSCode 再打开') -Critical $false
+                }
+            }
+            catch {
+                Add-VerificationCheck -Checks $checks -Logger $Logger -Name 'VSCode 界面语言' -Status 'WARN' -Detail ('argv.json 无法解析: ' + $_.Exception.Message) -Critical $false
+            }
+        }
+        else {
+            Add-VerificationCheck -Checks $checks -Logger $Logger -Name 'VSCode 界面语言' -Status 'WARN' -Detail 'argv.json 不存在；运行 inject-config.ps1 写入 zh-cn' -Critical $false
+        }
+
+        $workDir = Get-DefaultWorkDir
+        $workTasks = Join-Path $workDir '.vscode\tasks.json'
+        if (Test-Path -LiteralPath $workTasks) {
+            try {
+                $workJson = ConvertFrom-Json -InputObject (Read-TextFile -Path $workTasks)
+                $workTaskCount = @($workJson.tasks).Count
+                if ($workTaskCount -ge 2 -and (Test-Path -LiteralPath (Join-Path $workDir 'py'))) {
+                    Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作目录' -Status 'PASS' -Detail ($workDir + '（' + $workTaskCount + ' 个任务）') -Critical $false
+                }
+                else {
+                    Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作目录' -Status 'WARN' -Detail ('tasks 或 py 不完整: ' + $workDir) -Critical $false
+                }
+            }
+            catch {
+                Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作目录' -Status 'WARN' -Detail ('tasks.json 无法解析: ' + $_.Exception.Message) -Critical $false
+            }
+        }
+        else {
+            Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作目录' -Status 'WARN' -Detail ('未创建: ' + $workDir + '；运行 inject-config.ps1') -Critical $false
+        }
+
         if (Test-Path -LiteralPath $userPaths.Keybindings) {
             $keybindings = Test-JsonText -Text (Read-TextFile -Path $userPaths.Keybindings)
             if ($keybindings.Ok) {
