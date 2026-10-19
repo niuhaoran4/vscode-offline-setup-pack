@@ -442,6 +442,23 @@ try {
         $pathEntry = @($launch.configurations[0].environment | Where-Object { $_.name -eq 'PATH' }) | Select-Object -First 1
         Assert-True ($pathEntry -and $pathEntry.value -like 'C:\mingw64\bin;*') 'launch 应优先使用包内 MinGW bin'
     }
+
+    Test-Case 'Invoke-ElevatedChild 通过 ProcessStartInfo 启动并读取结果' {
+        $runId = [guid]::NewGuid().ToString('N')
+        $resultFile = Join-Path $tempRoot ('elevated-result-' + $runId + '.json')
+        $childScript = Join-Path $tempRoot ('elevated-child-' + $runId + '.ps1')
+        $escapedResult = $resultFile.Replace('\', '\\')
+        $childBody = @"
+`$obj = [pscustomobject]@{ runId = '$runId'; exitCode = 0; stages = @([pscustomobject]@{ Name = 'Test'; Status = 'OK'; Message = 'ok' }) }
+[System.IO.File]::WriteAllText('$escapedResult', (`$obj | ConvertTo-Json -Depth 5), (New-Object System.Text.UTF8Encoding(`$false)))
+"@
+        Write-Utf8NoBom -Path $childScript -Content $childBody
+
+        $elevated = Invoke-ElevatedChild -ScriptPath $childScript -ArgumentList @() -WorkingDirectory $tempRoot -ResultFile $resultFile -RunId $runId -TimeoutSeconds 30 -Verb ''
+        Assert-True ($null -ne $elevated) '应返回结果'
+        Assert-Equal 0 $elevated.ExitCode '退出码'
+        Assert-Equal 'Test' $elevated.Result.stages[0].Name '阶段名称'
+    }
 }
 finally {
     if (Test-Path -LiteralPath $tempRoot) {

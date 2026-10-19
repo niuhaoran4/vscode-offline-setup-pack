@@ -1,6 +1,6 @@
 # VSCode 离线全自动安装配置包
 
-版本：1.0.1  
+版本：1.0.2  
 平台：Windows 10 1809+ / Windows 11，x64  
 形态：VSCode 系统级安装版 + Python 系统级安装 + MinGW-w64 + 离线扩展
 
@@ -22,7 +22,7 @@
 > **推荐直接下载 Release 完整包。** 如果误下载了源码 ZIP，也可以双击 `Install.cmd`，它会自动下载完整包（约 512 MB，需要联网）。
 
 1. 打开 [Releases](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases)，下载  
-   `VSCode-Offline-Setup-Pack-1.0.1-win32-x64.zip`。
+   `VSCode-Offline-Setup-Pack-1.0.2-win32-x64.zip`。
 2. 把 ZIP **完整解压**到一个短英文路径，例如：
 
    ```text
@@ -54,8 +54,9 @@ examples\hello-cpp
 - 下载的是源码 ZIP：直接双击 `Install.cmd`，按提示下载完整包；或从 Releases 手动下载完整 ZIP。
 - `Install-D.cmd` 双击没反应：先完整解压；如果仍然没反应，在 PowerShell 里执行 `.\Install-D.cmd` 查看错误。
 - 直接双击即可，脚本会自己请求 UAC；不要右键“以管理员身份运行”再用另一个管理员账户提权，否则当前用户的配置会延迟到下次登录。
-- `hello-cpp` 链接失败（`undefined reference to std::...`）：旧版示例误用了 `gcc.exe`；1.0.1 已改为 `g++.exe` 并默认 `-static`。请更新到 1.0.1。
-- 出现 `IsPathRooted ... 路径中具有非法字符`：旧版在 PowerShell 5.1 下遇到 pyenv 畸形 PATH 项会崩溃；1.0.1 已兼容，请更新。
+- `hello-cpp` 链接失败（`undefined reference to std::...`）：旧版示例误用了 `gcc.exe`；1.0.1 起已改为 `g++.exe` 并默认 `-static`。请更新到最新版。
+- 出现 `IsPathRooted ... 路径中具有非法字符`：旧版在 PowerShell 5.1 下遇到 pyenv 畸形 PATH 项会崩溃；1.0.1 起已兼容，请更新。
+- 出现 `无法完成提权安装 ... PSCustomObject ... SwitchParameter`：旧版用 `Start-Process -Verb RunAs` 在部分机器上参数绑定失败；1.0.2 已改用 .NET `ProcessStartInfo` 启动提权进程。请更新到 1.0.2。
 - 杀毒软件拦截时，先把解压目录加入临时白名单。
 
 ---

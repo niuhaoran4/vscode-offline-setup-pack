@@ -12,7 +12,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tests\run-tests.ps1
 ```
 
-当前覆盖 32 项：
+当前覆盖 33 项：
 
 - 泛型列表转数组、null 处理；
 - PATH 合并、去重、大小写/斜杠规范化、变量保留；
@@ -35,9 +35,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tests\run-tests.ps
 - DataRoot：创建/复用联接、拒绝未加 `-MigrateData` 的旧目录、迁移旧数据、DryRun 不改盘；
 - 一键启动脚本：`Install.cmd` 调用 `setup.ps1`，`Install-D.cmd` 调用 `Install.cmd`；
 - PATH 畸形项：含 `cscript //nologo "..."` 的 PATH 仍能合并/移除，不抛异常；
-- hello-cpp：tasks 使用 `g++.exe`、默认 `-static`，launch 的 `preLaunchTask` 与任务标签匹配。
+- hello-cpp：tasks 使用 `g++.exe`、默认 `-static`，launch 的 `preLaunchTask` 与任务标签匹配；
+- 提权启动：通过 .NET `ProcessStartInfo` 启动子进程并读取结果，不依赖 `Start-Process` 的 switch 参数绑定。
 
-预期结果：`32 通过, 0 失败`，退出码 0。
+预期结果：`33 通过, 0 失败`，退出码 0。
 
 ---
 
@@ -341,8 +342,9 @@ $m.extensions | Select-Object id, version, targetPlatform, installOrder, depends
 
 ## 5. 验收清单（发布前逐项勾选）
 
-- [ ] `run-tests.ps1` 32/32 通过。
+- [ ] `run-tests.ps1` 33/33 通过。
 - [ ] PATH 含 pyenv 畸形项时 `setup.ps1 -DryRun` 不崩溃。
+- [ ] Windows PowerShell 5.1 下非管理员启动不再出现 `PSCustomObject → SwitchParameter`（真实 UAC 验收）。
 - [ ] `hello-cpp` 用 `g++.exe` + `-static` 编译，F5 可运行。
 - [ ] `Install.cmd` / `Install-D.cmd` 在包根目录存在，双击能启动安装。
 - [ ] `fetch-assets.ps1 -PlanOnly` 成功。

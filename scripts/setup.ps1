@@ -108,6 +108,7 @@ $currentSid = Get-CurrentUserSid
 $currentUser = Get-CurrentUserName
 
 if (-not $isAdmin -and -not $Elevated -and -not $DryRun) {
+    $context = $null
     try {
         $context = New-PackContext -PackRoot $PackRoot
         $parentLogger = New-PackLogger -LogDir $context.LogsDir -Prefix 'setup-parent'
@@ -163,8 +164,25 @@ if (-not $isAdmin -and -not $Elevated -and -not $DryRun) {
         exit $elevated.ExitCode
     }
     catch {
-        Write-Host ('无法完成提权安装: ' + $_.Exception.Message) -ForegroundColor Red
-        if ($_.ScriptStackTrace) { Write-Host $_.ScriptStackTrace -ForegroundColor DarkGray }
+        $err = $_
+        Write-Host ('无法完成提权安装: ' + $err.Exception.Message) -ForegroundColor Red
+        $category = ''
+        try { $category = $err.CategoryInfo.GetMessage() } catch { }
+        $detail = @(
+            ('TYPE: ' + $err.Exception.GetType().FullName)
+            ('FQID: ' + $err.FullyQualifiedErrorId)
+            ('CATEGORY: ' + $category)
+            ('COMMAND: ' + $err.InvocationInfo.MyCommand)
+            ('POSITION: ' + $err.InvocationInfo.PositionMessage)
+            ('STACK: ' + $err.ScriptStackTrace)
+        ) -join [Environment]::NewLine
+        Write-Host $detail -ForegroundColor DarkGray
+        try {
+            if ($context -and $context.LogsDir) {
+                [System.IO.File]::WriteAllText((Join-Path $context.LogsDir 'elevation-error.txt'), $detail, (New-Object System.Text.UTF8Encoding($false)))
+            }
+        }
+        catch { }
         exit 1
     }
 }

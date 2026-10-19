@@ -247,7 +247,8 @@ function Invoke-ElevatedChild {
         [Parameter(Mandatory)][string]$WorkingDirectory,
         [Parameter(Mandatory)][string]$ResultFile,
         [Parameter(Mandatory)][string]$RunId,
-        [int]$TimeoutSeconds = 7200
+        [int]$TimeoutSeconds = 7200,
+        [string]$Verb = 'runas'
     )
 
     $powershell = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
@@ -258,12 +259,20 @@ function Invoke-ElevatedChild {
     $allArguments = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $ScriptPath) + $ArgumentList
     $argumentString = (($allArguments | ForEach-Object { ConvertTo-CommandLineArgument $_ }) -join ' ')
 
-    # Do not use -PassThru here. A UAC-elevated child only grants the unelevated
-    # parent a SYNCHRONIZE handle, so Refresh(), HasExited and ExitCode can throw.
-    # The child writes setup-result-<runId>.json in its finally block; that file
-    # is the single source of truth for status and exit code.
+    # Start-Process -Verb RunAs has produced a PS 5.1 parameter-binding failure
+    # ("PSCustomObject -> SwitchParameter") on some machines. Use ShellExecute
+    # through ProcessStartInfo instead: there are no PowerShell switch parameters
+    # involved, and the child still writes setup-result-<runId>.json in its finally
+    # block, which is the only status source we read.
     try {
-        $null = Start-Process -FilePath $powershell -ArgumentList $argumentString -WorkingDirectory $WorkingDirectory -Verb RunAs -ErrorAction Stop
+        $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+        $startInfo.FileName = $powershell
+        $startInfo.Arguments = $argumentString
+        $startInfo.WorkingDirectory = $WorkingDirectory
+        $startInfo.UseShellExecute = $true
+        if ($Verb) { $startInfo.Verb = $Verb }
+        $startInfo.WindowStyle = [System.Diagnostics.ProcessWindowStyle]::Normal
+        $null = [System.Diagnostics.Process]::Start($startInfo)
     }
     catch {
         throw ('无法请求管理员权限（UAC 可能被拒绝）: ' + $_.Exception.Message)
