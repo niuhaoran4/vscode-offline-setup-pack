@@ -12,7 +12,7 @@
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tests\run-tests.ps1
 ```
 
-当前覆盖 35 项：
+当前覆盖 36 项：
 
 - 泛型列表转数组、null 处理；
 - PATH 合并、去重、大小写/斜杠规范化、变量保留；
@@ -38,9 +38,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\tests\run-tests.ps
 - hello-cpp：tasks 使用 `g++.exe`、默认 `-static`，launch 的 `preLaunchTask` 与任务标签匹配；
 - 提权启动：通过 .NET `ProcessStartInfo` 启动子进程并读取结果，不依赖 `Start-Process` 的 switch 参数绑定；
 - JSONC：注释、尾逗号和 BOM 不影响 `argv.json` 的语言设置；
-- 工作目录：创建 `.vscode/tasks.json`（C/C++ 两个任务）和 `py` 目录，重复执行不覆盖已有 tasks.json。
+- 工作目录：创建 `.vscode/tasks.json`（C/C++ 两个任务）和 `py` 目录，重复执行不覆盖已有 tasks.json；
+- 桌面快捷方式：目标为 VSCode `Code.exe`，参数指向 work 目录。
 
-预期结果：`35 通过, 0 失败`，退出码 0。
+预期结果：`36 通过, 0 失败`，退出码 0。
 
 ---
 
@@ -344,7 +345,8 @@ $m.extensions | Select-Object id, version, targetPlatform, installOrder, depends
 
 ## 5. 验收清单（发布前逐项勾选）
 
-- [ ] `run-tests.ps1` 35/35 通过。
+- [ ] `run-tests.ps1` 36/36 通过。
+- [ ] 桌面生成 `VSCode 工作区.lnk`，移动 work 后 `Repair-WorkShortcut.cmd` 能重建。
 - [ ] `argv.json` 带注释时仍能写入 `zh-cn`，完全退出 VSCode 后界面为中文。
 - [ ] 桌面 `work` 目录包含 `.vscode/tasks.json` 和 `py`，tasks 有 C/C++ 两个任务。
 - [ ] PATH 含 pyenv 畸形项时 `setup.ps1 -DryRun` 不崩溃。

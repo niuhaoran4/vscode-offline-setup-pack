@@ -411,8 +411,10 @@ try {
     Test-Case '一键启动脚本存在并引用安装入口' {
         $mainLauncher = Join-Path $packRoot 'Install.cmd'
         $dLauncher = Join-Path $packRoot 'Install-D.cmd'
+        $repairLauncher = Join-Path $packRoot 'Repair-WorkShortcut.cmd'
         Assert-True (Test-Path -LiteralPath $mainLauncher) 'Install.cmd 应存在'
         Assert-True (Test-Path -LiteralPath $dLauncher) 'Install-D.cmd 应存在'
+        Assert-True (Test-Path -LiteralPath $repairLauncher) 'Repair-WorkShortcut.cmd 应存在'
         Assert-True ((Read-TextFile -Path $mainLauncher) -match 'setup\.ps1') 'Install.cmd 应调用 setup.ps1'
         Assert-True ((Read-TextFile -Path $dLauncher) -match 'Install\.cmd') 'Install-D.cmd 应调用 Install.cmd'
     }
@@ -493,6 +495,28 @@ try {
         Write-Utf8NoBom -Path $tasksPath -Content '{"sentinel":true}'
         Initialize-WorkDirectory -Context $context -Logger $logger -WorkDir $workDir | Out-Null
         Assert-Equal '{"sentinel":true}' (Read-TextFile -Path $tasksPath) '重复执行不应覆盖已有 tasks.json'
+    }
+
+    Test-Case '桌面工作区快捷方式创建' {
+        $desktop = Join-Path $tempRoot 'desktop'
+        $work = Join-Path $tempRoot 'shortcut-work'
+        New-Item -ItemType Directory -Path $desktop, $work -Force | Out-Null
+        $exe = Join-Path $env:SystemRoot 'System32\notepad.exe'
+        $logger = New-PackLogger -LogDir (Join-Path $tempRoot 'shortcut-logs') -Prefix 'shortcut-test'
+
+        $result = Set-WorkShortcut -WorkDir $work -VSCodeExe $exe -Desktop $desktop -Logger $logger
+        Assert-True $result.Ok ('快捷方式应创建成功: ' + $result.Message)
+        Assert-True (Test-Path -LiteralPath $result.ShortcutPath) '快捷方式文件应存在'
+
+        $shell = New-Object -ComObject WScript.Shell
+        try {
+            $shortcut = $shell.CreateShortcut($result.ShortcutPath)
+            Assert-Equal $exe $shortcut.TargetPath '快捷方式目标'
+            Assert-True ($shortcut.Arguments -like ('*' + $work + '*')) '快捷方式参数应包含工作目录'
+        }
+        finally {
+            [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell)
+        }
     }
 }
 finally {

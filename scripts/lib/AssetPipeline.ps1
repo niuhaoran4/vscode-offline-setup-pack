@@ -919,7 +919,7 @@ function Build-PackArchive {
     try {
         New-Item -ItemType Directory -Path $stagingRoot -Force | Out-Null
 
-        foreach ($fileName in @('README.md', 'VERSION', 'NOTICE.md', 'MANIFEST.json', 'Install.cmd', 'Install-D.cmd')) {
+        foreach ($fileName in @('README.md', 'VERSION', 'NOTICE.md', 'MANIFEST.json', 'Install.cmd', 'Install-D.cmd', 'Repair-WorkShortcut.cmd')) {
             $source = Join-Path $Context.Root $fileName
             if (Test-Path -LiteralPath $source) {
                 Copy-Item -LiteralPath $source -Destination $stagingRoot -Force

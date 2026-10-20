@@ -338,6 +338,15 @@ function Invoke-PackVerification {
             Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作目录' -Status 'WARN' -Detail ('未创建: ' + $workDir + '；运行 inject-config.ps1') -Critical $false
         }
 
+        $desktopPath = [Environment]::GetFolderPath('Desktop')
+        $workShortcut = if ($desktopPath) { Join-Path $desktopPath 'VSCode 工作区.lnk' } else { $null }
+        if ($workShortcut -and (Test-Path -LiteralPath $workShortcut)) {
+            Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作区快捷方式' -Status 'PASS' -Detail $workShortcut -Critical $false
+        }
+        else {
+            Add-VerificationCheck -Checks $checks -Logger $Logger -Name '工作区快捷方式' -Status 'WARN' -Detail '未创建；运行 inject-config.ps1 或 Repair-WorkShortcut.cmd' -Critical $false
+        }
+
         if (Test-Path -LiteralPath $userPaths.Keybindings) {
             $keybindings = Test-JsonText -Text (Read-TextFile -Path $userPaths.Keybindings)
             if ($keybindings.Ok) {

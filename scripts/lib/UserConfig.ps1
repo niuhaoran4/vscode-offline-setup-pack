@@ -27,11 +27,64 @@ function Get-DefaultWorkDir {
     return (Join-Path $env:USERPROFILE 'work')
 }
 
+function Set-WorkShortcut {
+    param(
+        [Parameter(Mandatory)][string]$WorkDir,
+        [Parameter(Mandatory)][string]$VSCodeExe,
+        [string]$Desktop = '',
+        $Logger = $null,
+        [switch]$DryRun
+    )
+
+    if (-not $Desktop) { $Desktop = [Environment]::GetFolderPath('Desktop') }
+    if ([string]::IsNullOrWhiteSpace($Desktop)) {
+        return [pscustomobject]@{ Ok = $false; ShortcutPath = $null; Message = '无法确定桌面路径' }
+    }
+
+    $shortcutPath = Join-Path $Desktop 'VSCode 工作区.lnk'
+    if ($DryRun) {
+        if ($Logger) { $Logger.Detail('DryRun: 将创建/更新桌面快捷方式: ' + $shortcutPath) }
+        return [pscustomobject]@{ Ok = $true; ShortcutPath = $shortcutPath; Message = 'DryRun' }
+    }
+    if (-not (Test-Path -LiteralPath $WorkDir)) {
+        return [pscustomobject]@{ Ok = $false; ShortcutPath = $shortcutPath; Message = '工作目录不存在: ' + $WorkDir }
+    }
+    if (-not (Test-Path -LiteralPath $VSCodeExe)) {
+        return [pscustomobject]@{ Ok = $false; ShortcutPath = $shortcutPath; Message = '找不到 VSCode: ' + $VSCodeExe }
+    }
+    if (-not (Test-Path -LiteralPath $Desktop)) {
+        New-Item -ItemType Directory -Path $Desktop -Force | Out-Null
+    }
+
+    $shell = $null
+    try {
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcut = $shell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = $VSCodeExe
+        $shortcut.Arguments = '"' + $WorkDir + '"'
+        $shortcut.WorkingDirectory = $WorkDir
+        $shortcut.IconLocation = $VSCodeExe + ',0'
+        $shortcut.Description = 'Open the work project in Visual Studio Code'
+        $shortcut.Save()
+        if ($Logger) { $Logger.Ok('已创建桌面快捷方式: ' + $shortcutPath) }
+        return [pscustomobject]@{ Ok = $true; ShortcutPath = $shortcutPath; Message = 'Created' }
+    }
+    catch {
+        return [pscustomobject]@{ Ok = $false; ShortcutPath = $shortcutPath; Message = $_.Exception.Message }
+    }
+    finally {
+        if ($shell) {
+            try { [void][System.Runtime.InteropServices.Marshal]::ReleaseComObject($shell) } catch { }
+        }
+    }
+}
+
 function Initialize-WorkDirectory {
     param(
         [Parameter(Mandatory)]$Context,
         [Parameter(Mandatory)]$Logger,
         [string]$WorkDir = '',
+        [string]$VSCodeExe = '',
         [switch]$DryRun
     )
 
@@ -51,7 +104,13 @@ function Initialize-WorkDirectory {
 
     if ($DryRun) {
         $Logger.Detail('DryRun: 将创建/检查工作目录: ' + $workPath)
-        return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Created = $false; Planned = $true }
+        if ($VSCodeExe) {
+            Set-WorkShortcut -WorkDir $workPath -VSCodeExe $VSCodeExe -Logger $Logger -DryRun | Out-Null
+        }
+        else {
+            $Logger.Detail('DryRun: 未找到 VSCode，跳过桌面快捷方式')
+        }
+        return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Shortcut = $null; Created = $false; Planned = $true }
     }
 
     New-Item -ItemType Directory -Path $vscodeDir, $pythonDir -Force | Out-Null
@@ -64,9 +123,23 @@ function Initialize-WorkDirectory {
     else {
         $Logger.Detail('工作目录任务已存在（跳过）: ' + $tasksPath)
     }
+
+    $shortcutPath = $null
+    if ($VSCodeExe -and (Test-Path -LiteralPath $VSCodeExe)) {
+        $shortcut = Set-WorkShortcut -WorkDir $workPath -VSCodeExe $VSCodeExe -Logger $Logger
+        if ($shortcut.Ok) {
+            $shortcutPath = $shortcut.ShortcutPath
+        }
+        else {
+            $Logger.Warn('创建工作区快捷方式失败: ' + $shortcut.Message)
+        }
+    }
+    else {
+        $Logger.Warn('未找到 VSCode，未创建桌面快捷方式。')
+    }
     $Logger.Info('工作目录: ' + $workPath)
 
-    return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Created = $created; Planned = $false }
+    return [pscustomobject]@{ WorkDir = $workPath; Tasks = $tasksPath; PythonDir = $pythonDir; Shortcut = $shortcutPath; Created = $created; Planned = $false }
 }
 
 function ConvertFrom-JsoncText {
@@ -485,6 +558,7 @@ function Invoke-UserConfiguration {
         Settings        = $null
         Extensions      = $null
         WorkDir         = $null
+        WorkShortcut    = $null
         UserPathChanged = $false
         Ok              = $true
     }
@@ -494,8 +568,11 @@ function Invoke-UserConfiguration {
         $Logger.Warn('检测到 VSCode 正在运行。配置会写入磁盘，但扩展安装后需要重启 VSCode 窗口才能生效。')
     }
 
-    $workResult = Initialize-WorkDirectory -Context $Context -Logger $Logger -DryRun:$DryRun
+    $vscodeExe = ''
+    try { $vscodeExe = [string](Get-VSCodePaths -Context $Context).SystemExe } catch { }
+    $workResult = Initialize-WorkDirectory -Context $Context -Logger $Logger -VSCodeExe $vscodeExe -DryRun:$DryRun
     $result.WorkDir = $workResult.WorkDir
+    $result.WorkShortcut = $workResult.Shortcut
 
     if (-not $NoBackup -and -not $DryRun) {
         $result.Backup = Backup-UserCodeDirectory -UserDir $paths.UserDir -LogDir $Context.LogsDir -Logger $Logger

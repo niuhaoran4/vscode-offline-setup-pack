@@ -1,16 +1,28 @@
 # VSCode 离线全自动安装配置包
 
-版本：1.0.3  
+版本：1.0.4  
 平台：Windows 10 1809+ / Windows 11，x64  
 形态：VSCode 系统级安装版 + Python 系统级安装 + MinGW-w64 + 离线扩展
 
 [**⬇ 下载完整离线安装包（Windows x64，约 512 MB）**](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases/latest)
 
+## 新手必看（30 秒）
+
+1. **不要双击 `Install.cmd`。** 右键 `Install.cmd` → **以管理员身份运行**。  
+   装 D 盘就右键 `Install-D.cmd` → **以管理员身份运行**。
+2. **汉化**：如果打开仍是英文，按 `Ctrl+Shift+P`，输入 `Configure Display Language`，选择 **中文 (简体) zh-cn**，然后完全退出 VSCode 再打开。
+3. **写代码**：
+   - C 文件用 `文件名.c`，C++ 文件用 `文件名.cpp`。
+   - 源文件放在 `work` 目录下，**不要放进 `.vscode`**；`.vscode` 只放 `tasks.json` 配置。
+   - 在 VSCode 里按 `Ctrl+Shift+B`：C 选 `gcc` 任务，C++ 选 `g++` 任务（默认）。
+   - Python 文件用 `文件名.py`，建议放在 `work\py` 下，右键选择“运行 Python 文件”。
+4. **work 可以移动。** 移动后把新的 `work` 文件夹拖到 `Repair-WorkShortcut.cmd` 上，重建桌面“VSCode 工作区”快捷方式。
+
 这个包把一台干净的 Windows 电脑配置成可以直接写 C/C++ 和 Python 的环境：VSCode、Python、MinGW 都安装到系统级路径并写入系统 PATH；VSCode 配置和扩展按当前 Windows 用户注入；整个过程不依赖 Marketplace 和互联网（资产准备阶段除外）。
 
 > **GitHub 仓库说明**：仓库只保存脚本、配置、文档和示例，不包含 `installer/`、`tools/` 中的安装包、`extensions/*.vsix`、`dist/` 和 `logs/`。  
 > - 想直接使用：从上面的 **Releases** 下载完整 ZIP（公开仓库，无需登录）。  
-> - 如果下载的是源码 ZIP：双击 `Install.cmd`，它会自动从 Releases 下载完整包（约 512 MB，需要联网），解压后继续安装。  
+> - 如果下载的是源码 ZIP：运行 `Install.cmd`（右键 → 以管理员身份运行），它会自动从 Releases 下载完整包（约 512 MB，需要联网），解压后继续安装。  
 > - 源码仓库不把 500 MB 二进制塞进 Git 历史，这是 GitHub 的常规做法。
 
 > **第三方组件提示**：Release 内含 Microsoft Marketplace 扩展（包括 Pylance、C/C++），公开再分发前请确认各自许可；详见 `NOTICE.md`。
@@ -19,24 +31,26 @@
 
 ## 第一次使用：只要三步
 
-> **推荐直接下载 Release 完整包。** 如果误下载了源码 ZIP，也可以双击 `Install.cmd`，它会自动下载完整包（约 512 MB，需要联网）。
+> **推荐直接下载 Release 完整包。** 如果误下载了源码 ZIP，也可以运行 `Install.cmd`（右键 → 以管理员身份运行），它会自动下载完整包（约 512 MB，需要联网）。
 
 1. 打开 [Releases](https://github.com/niuhaoran4/vscode-offline-setup-pack/releases)，下载  
-   `VSCode-Offline-Setup-Pack-1.0.3-win32-x64.zip`。
+   `VSCode-Offline-Setup-Pack-1.0.4-win32-x64.zip`。
 2. 把 ZIP **完整解压**到一个短英文路径，例如：
 
    ```text
    C:\vscode-offline-pack
    ```
 
-   不要在压缩包里直接双击运行。
-3. 双击 **`Install.cmd`**，UAC 弹窗点“是”，然后等它自动装完。
+   不要在压缩包里直接运行。
+3. 右键 **`Install.cmd`** → **以管理员身份运行**，UAC 弹窗点“是”，然后等它自动装完。
 
-如果双击的是源码包里的 `Install.cmd`，它会提示是否下载完整包；按 `Y` 或等 15 秒，它会自动下载、解压并继续安装。
+如果运行的是源码包里的 `Install.cmd`，它会提示是否下载完整包；按 `Y` 或等 15 秒，它会自动下载、解压并继续安装。
 
 默认装到 C 盘，界面是简体中文，安装过程不需要联网。**第一次使用建议就选 C 盘，最省事；只有 C 盘空间紧张时再考虑 D 盘。**
 
-想全部放到 D 盘，就双击 **`Install-D.cmd`**。D 盘必须是固定本地 NTFS 盘，盘符不能经常变化。
+想全部放到 D 盘，就右键 **`Install-D.cmd`** → **以管理员身份运行**。D 盘必须是固定本地 NTFS 盘，盘符不能经常变化。
+
+安装完成后，桌面会出现 **“VSCode 工作区”** 快捷方式，双击直接打开 `work` 项目。`work` 可以移动到其他目录；移动后把新的 `work` 文件夹拖到 `Repair-WorkShortcut.cmd` 上即可重建快捷方式。
 
 装完后注销重新登录，或至少新开一个 PowerShell。打开解压目录下的：
 
@@ -49,14 +63,13 @@ examples\hello-cpp
 **常见问题**
 
 - 双击后提示“Windows 已保护你的电脑”：点“更多信息”→“仍要运行”。
-- 双击没反应：在 PowerShell 里执行 `.\Install.cmd`。
+- 右键“以管理员身份运行”没有反应：在管理员 PowerShell 里执行 `.\Install.cmd`。
 - 看到 `scripts\setup.ps1 not found`：说明你是在 ZIP 压缩包里直接运行。请先完整解压，再运行 `Install.cmd`。
-- 下载的是源码 ZIP：直接双击 `Install.cmd`，按提示下载完整包；或从 Releases 手动下载完整 ZIP。
-- `Install-D.cmd` 双击没反应：先完整解压；如果仍然没反应，在 PowerShell 里执行 `.\Install-D.cmd` 查看错误。
-- 直接双击即可，脚本会自己请求 UAC；不要右键“以管理员身份运行”再用另一个管理员账户提权，否则当前用户的配置会延迟到下次登录。
+- 下载的是源码 ZIP：运行 `Install.cmd`，按提示下载完整包；或从 Releases 手动下载完整 ZIP。
+- `Install-D.cmd` 右键运行失败：先完整解压；如果仍然失败，在管理员 PowerShell 里执行 `.\Install-D.cmd` 查看错误。
 - `hello-cpp` 链接失败（`undefined reference to std::...`）：旧版示例误用了 `gcc.exe`；1.0.1 起已改为 `g++.exe` 并默认 `-static`。请更新到最新版。
 - 出现 `IsPathRooted ... 路径中具有非法字符`：旧版在 PowerShell 5.1 下遇到 pyenv 畸形 PATH 项会崩溃；1.0.1 起已兼容，请更新。
-- 出现 `无法完成提权安装 ... PSCustomObject ... SwitchParameter`：旧版用 `Start-Process -Verb RunAs` 在部分机器上参数绑定失败；1.0.2 已改用 .NET `ProcessStartInfo` 启动提权进程。请更新到 1.0.2。
+- 出现 `无法完成提权安装 ... PSCustomObject ... SwitchParameter`：旧版用 `Start-Process -Verb RunAs` 在部分机器上参数绑定失败；请更新到最新版。
 - 安装后界面仍是英文：VSCode 必须**完全退出**（窗口、托盘/后台进程都结束）再打开，仅 Reload Window 不读取 `argv.json`。脚本会写入 `zh-cn`，带注释和尾逗号的 `argv.json` 也会先备份再更新。
 - 杀毒软件拦截时，先把解压目录加入临时白名单。
 
@@ -64,7 +77,7 @@ examples\hello-cpp
 
 ## 0. 先看这里
 
-- **需要管理员权限一次**：安装系统级组件必须经过 UAC。脚本会自动请求提权，你只需要在 UAC 窗口点“是”。标准用户在 UAC 中输入管理员密码时，脚本会识别出“当前管理员不是启动用户”，不会把配置写错人。
+- **需要管理员权限一次**：安装系统级组件必须经过 UAC。安装时右键 `Install.cmd` → **以管理员身份运行**，在 UAC 窗口点“是”。
 - **VSCode 程序全局，配置和扩展按用户**：这是 VSCode 安装版的固有限制。程序、Python、MinGW、系统 PATH 对所有用户生效；`settings.json`、扩展、代码片段在 `%APPDATA%\Code` 和 `%USERPROFILE%\.vscode` 下，需要每个用户注入一次。脚本会为启动用户自动注入，其他用户可以用 `inject-config.ps1` 或 Active Setup 处理。
 - **全局 Python 的 pip 写入受限**：普通用户不能往 `C:\Program Files\Python312\Lib\site-packages` 写包。日常请用项目内 `.venv`，或用 `pip install --user`（脚本已把用户级 Scripts 目录加入用户 PATH）。详见第 6 节。
 - **离线指的是安装阶段**：安装包、Python、MinGW、扩展 `.vsix` 都已经在包内；目标机断网也能完成安装。资产准备阶段仍然需要一台联网机器运行 `fetch-assets.ps1`。
@@ -92,8 +105,9 @@ examples\hello-cpp
 VSCode-Offline-Setup-Pack/
 ├── README.md
 ├── VERSION
-├── Install.cmd                # 双击一键安装（默认 C 盘，自动验证）
-├── Install-D.cmd              # 双击一键安装到 D 盘（程序 + 数据）
+├── Install.cmd                # 右键以管理员运行：一键安装（默认 C 盘）
+├── Install-D.cmd              # 右键以管理员运行：一键安装到 D 盘（程序 + 数据）
+├── Repair-WorkShortcut.cmd    # 移动 work 后拖上去，重建桌面工作区快捷方式
 ├── MANIFEST.json              # 资产版本、相对路径、SHA256、扩展依赖与安装顺序
 ├── installer/                 # VSCode / Python 安装包
 ├── tools/                     # winlibs .7z + 7zr.exe
@@ -193,8 +207,8 @@ cd C:\vscode-offline-pack
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
-也可以直接双击 `Install.cmd`：它会自动提权、安装、验证，最后暂停显示结果。  
-全部放 D 盘就双击 `Install-D.cmd`（D 盘必须是固定 NTFS 盘；已有 C 盘系统版 VSCode 时先卸载）。
+也可以右键 `Install.cmd` → **以管理员身份运行**：它会安装、验证，最后暂停显示结果。  
+全部放 D 盘就右键 `Install-D.cmd` → **以管理员身份运行**（D 盘必须是固定 NTFS 盘；已有 C 盘系统版 VSCode 时先卸载）。
 
 常用选项：
 
@@ -250,7 +264,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1 `
 ```
 
 - 桌面被 OneDrive 重定向时，路径跟随实际桌面位置；桌面不可用时回退到 `%USERPROFILE%\work`。
+- 安装/注入时会在桌面创建 **“VSCode 工作区”** 快捷方式，双击直接用 VSCode 打开 `work`。
 - 如果 `tasks.json` 已存在，不会覆盖，避免破坏你自己的任务配置。
+- C/C++ 源文件放在 `work` 下（不要放进 `.vscode`）；`.c` 用 gcc 任务，`.cpp` 用 g++ 任务（默认）。Python 文件建议放在 `work\py`。
+- `work` 可以整体移动到其他目录，`.vscode/tasks.json` 使用 `${file}` / `${fileDirname}`，不会因移动失效。移动后把新的 `work` 文件夹拖到 `Repair-WorkShortcut.cmd` 上，重建桌面快捷方式。
 - `work` 里的 C++ 任务使用 `g++.exe`；如果运行生成的 exe 报 DLL 入口点错误，可在 args 中加 `-static`，或确保 `C:\mingw64\bin` 在 PATH 前面。
 
 ### 3.4 验证
@@ -275,6 +292,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File C:\vscode-offline-pack\scrip
 - 用户 `settings.json` 的 Python 解释器和 C++ 编译器路径是否正确；
 - `argv.json` 的界面语言是否为 `zh-cn`；
 - 桌面 `work` 目录、`.vscode\tasks.json` 和 `py` 是否创建；
+- 桌面“VSCode 工作区”快捷方式是否存在；
 - 扩展清单是否全部安装；
 - 实际编译、运行、gdb 批处理是否成功（冒烟测试，包含 C++）。
 
